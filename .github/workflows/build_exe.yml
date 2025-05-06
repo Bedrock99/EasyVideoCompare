@@ -27,30 +27,30 @@ jobs:
       id: get_version
       run: |
         $VERSION = python -c "from version import __version__; print(__version__)"
-        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT # Corrected output format
 
     - name: Build executable with cx_Freeze
       run: python setup.py build
 
     - name: Zip build output
-      run: Compress-Archive -Path build\* -DestinationPath build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
+      run: Compress-Archive -Path build\* -DestinationPath build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
 
     - name: Upload build artifact for workflow
       uses: actions/upload-artifact@v4
       with:
-        name: windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}
-        path: build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
+        name: windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}
+        path: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
 
     - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: Release ${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ github.ref_name }} # Use github.ref_name for the tag
+        release_name: Release ${{ steps.get_version.outputs.version }}
         body: |
-          Automatischer Build für Version ${{ steps.get_version.outputs.VERSION }} (Commit ${{ github.sha }}).
+          Automatischer Build für Version ${{ steps.get_version.outputs.version }} (Commit ${{ github.sha }}).
           (Hier kannst du Release-Notizen hinzufügen)
         draft: false
         prerelease: false
-        artifacts: build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
+        artifacts: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
