@@ -2,9 +2,8 @@ name: Build Executable (Windows)
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*.*.*' # Trigger on tags like v1.0.0
 
 jobs:
   build:
@@ -36,8 +35,22 @@ jobs:
     - name: Zip build output
       run: Compress-Archive -Path build\* -DestinationPath build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
 
-    - name: Upload build artifacts
+    - name: Upload build artifact for workflow
       uses: actions/upload-artifact@v4
       with:
         name: windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}
         path: build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        release_name: Release ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          Automatischer Build für Version ${{ steps.get_version.outputs.VERSION }} (Commit ${{ github.sha }}).
+          (Hier kannst du Release-Notizen hinzufügen)
+        draft: false
+        prerelease: false
+        artifacts: build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
