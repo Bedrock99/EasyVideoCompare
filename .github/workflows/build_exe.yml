@@ -26,14 +26,16 @@ jobs:
     - name: Get version from version.py
       id: get_version
       run: |
-        $VERSION = python -c "from version import __version__; print(__version__)"
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        $version = python -c "from version import __version__; print(__version__)"
+        echo "version=$version" >> $env:GITHUB_OUTPUT
 
     - name: Build executable with cx_Freeze
       run: python setup.py build
 
     - name: Zip build output
-      run: Compress-Archive -Path build\* -DestinationPath build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
+      run: |
+        $zipName = "build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip"
+        Compress-Archive -Path build\* -DestinationPath $zipName
 
     - name: Upload build artifact for workflow
       uses: actions/upload-artifact@v4
@@ -42,7 +44,8 @@ jobs:
         path: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
 
     - name: Create GitHub Release
-      uses: actions/create-release@v2 # Aktualisierte Version der Action
+      id: create_release
+      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -50,7 +53,15 @@ jobs:
         release_name: Release ${{ steps.get_version.outputs.version }}
         body: |
           Automatischer Build für Version ${{ steps.get_version.outputs.version }} (Commit ${{ github.sha }}).
-          (Hier kannst du Release-Notizen hinzufügen)
         draft: false
         prerelease: false
-        files: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip # Korrekter Input für Artefakte
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
+        asset_name: windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
+        asset_content_type: application/zip
