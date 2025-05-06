@@ -43,25 +43,9 @@ jobs:
         name: windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}
         path: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
 
-    - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
+    - name: Create Release and Upload Asset
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ steps.get_version.outputs.version }}
-        body: |
-          Automatischer Build für Version ${{ steps.get_version.outputs.version }} (Commit ${{ github.sha }}).
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: build/windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
-        asset_name: windows-build-${{ steps.get_version.outputs.version }}-${{ github.sha }}.zip
-        asset_content_type: application/zip
