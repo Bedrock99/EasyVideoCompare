@@ -3,7 +3,6 @@ from version import __version__
 
 import tkinter as tk
 from tkinter import ttk, messagebox, Scale
-from tkinter.ttk import Style
 
 from PIL import Image, ImageTk
 import os
@@ -16,12 +15,12 @@ def get_video_info(video_pfad):
         cap = cv2.VideoCapture(video_pfad)
         if not cap.isOpened():
             return None
-        info = {}
-        info['filename'] = os.path.basename(video_pfad)
-        info['frame_width'] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        info['frame_height'] = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        info['fps'] = cap.get(cv2.CAP_PROP_FPS)
-        info['frame_count'] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        info = {'filename': os.path.basename(video_pfad),
+                'frame_width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                'frame_height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                'fps': cap.get(cv2.CAP_PROP_FPS),
+                'frame_count': int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                }
 
         # Bitrate (ungefähre)
         duration_seconds = info['frame_count'] / info['fps'] if info['fps'] > 0 else 0
@@ -42,6 +41,20 @@ def get_video_info(video_pfad):
             info['filesize_readable'] = f"{size_bytes / (1024 * 1024):.2f} MB"
         else:
             info['filesize_readable'] = f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+
+        # Lesbare Videolänge
+        duration_seconds = info['frame_count'] / info['fps'] if info['fps'] > 0 else 0
+        if duration_seconds < 60:
+            info['duration_readable'] = f"{int(duration_seconds)} sek"
+        elif duration_seconds < 3600:
+            minutes = int(duration_seconds // 60)
+            seconds = int(duration_seconds % 60)
+            info['duration_readable'] = f"{minutes}:{seconds}"
+        else:
+            hours = int(duration_seconds // 3600)
+            minutes = int((duration_seconds % 3600) // 60)
+            seconds = int(duration_seconds % 60)
+            info['duration_readable'] = f"{hours}:{minutes}:{seconds}"
 
         cap.release()
         return info
@@ -78,7 +91,6 @@ class AuswahlDialog(tk.Toplevel):
         super().__init__(parent)
         self.title(f"Ähnliche Videopaare überprüfen - v{__version__}")
         self.geometry("600x500")  # Etwas mehr Höhe für den Ähnlichkeitswert und Trackbars
-        self.transient(parent)
         self.grab_set()
         self.focus_set()
 
@@ -92,6 +104,10 @@ class AuswahlDialog(tk.Toplevel):
         self.num_keyframes_links = 0
         self.num_keyframes_rechts = 0
 
+        self.aktuelle_keyframes_links_pil = None
+        self.aktuelle_keyframes_rechts_pil = None
+        self.original_image_left = None
+        self.original_image_right = None
         self.similarity_label = None
         self.video_display_frame = None
         self.left_frame = None
@@ -112,7 +128,7 @@ class AuswahlDialog(tk.Toplevel):
 
         self.bind("<Configure>", self.on_resize)
 
-    def on_resize(self, event):
+    def on_resize(self, _event):
         if self.resize_timer:
             self.after_cancel(self.resize_timer)  # Alten Timer abbrechen
 
@@ -221,14 +237,14 @@ class AuswahlDialog(tk.Toplevel):
 
                 if info_links:
                     self.info_label_left.config(
-                        text=f"{info_links['frame_width']}x{info_links['frame_height']} @ {info_links['fps']:.2f} | "
+                        text=f"{info_links['frame_width']}x{info_links['frame_height']} @ {info_links['fps']:.2f} | {info_links['duration_readable']} | "
                              f"{info_links['bitrate_kbps']} kbps | {info_links['codec']} | {info_links['filesize_readable']}")
                 else:
                     self.info_label_left.config(text="Informationen konnten nicht abgerufen werden.")
 
                 if info_rechts:
                     self.info_label_right.config(
-                        text=f"{info_rechts['frame_width']}x{info_rechts['frame_height']} @ {info_rechts['fps']:.2f} | "
+                        text=f"{info_rechts['frame_width']}x{info_rechts['frame_height']} @ {info_rechts['fps']:.2f} | {info_rechts['duration_readable']} | "
                              f"{info_rechts['bitrate_kbps']} kbps | {info_rechts['codec']} | {info_rechts['filesize_readable']}")
                 else:
                     self.info_label_right.config(text="Informationen konnten nicht abgerufen werden.")
@@ -300,7 +316,8 @@ class AuswahlDialog(tk.Toplevel):
                     self.keyframe_scale_right.set(min(index_links, self.num_keyframes_rechts - 1) if self.num_keyframes_rechts > 0 else 0)
                     if self.aktuelle_keyframes_rechts_pil:
                         self.original_image_right = self.aktuelle_keyframes_rechts_pil[min(index_links, self.num_keyframes_rechts - 1)] if self.num_keyframes_rechts > 0 else None
-                        self.zeige_keyframe(self.aktuelle_keyframes_rechts_pil, min(index_links, self.num_keyframes_rechts - 1) if self.num_keyframes_rechts > 0 else 0, self.keyframe_image_label_right, "original_image_right")
+                        self.zeige_keyframe(self.aktuelle_keyframes_rechts_pil, min(index_links, self.num_keyframes_rechts - 1) if self.num_keyframes_rechts > 0 else 0,
+                                            self.keyframe_image_label_right, "original_image_right")
         except ValueError:
             pass
 
@@ -321,9 +338,11 @@ class AuswahlDialog(tk.Toplevel):
                     self.keyframe_scale_left.set(min(index_rechts, self.num_keyframes_links - 1) if self.num_keyframes_links > 0 else 0)
                     if self.aktuelle_keyframes_links_pil:
                         self.original_image_left = self.aktuelle_keyframes_links_pil[min(index_rechts, self.num_keyframes_links - 1)] if self.num_keyframes_links > 0 else None
-                        self.zeige_keyframe(self.aktuelle_keyframes_links_pil, min(index_rechts, self.num_keyframes_links - 1) if self.num_keyframes_links > 0 else 0, self.keyframe_image_label_left, "original_image_left")
+                        self.zeige_keyframe(self.aktuelle_keyframes_links_pil, min(index_rechts, self.num_keyframes_links - 1) if self.num_keyframes_links > 0 else 0,
+                                            self.keyframe_image_label_left, "original_image_left")
         except ValueError:
             pass
+
     def synchronisiere_keyframes_links(self, value):
         self.zeige_keyframe_links(value)
 

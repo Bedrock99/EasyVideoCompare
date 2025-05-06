@@ -51,7 +51,8 @@ def extrahiere_keyframe_histogramme(video_pfad, schwellwert=20, bins=None, range
     cap.release()
     return histogramme
 
-def vergleiche_videos(video_pfade, vergleichs_schwelle=0.3, progress_callback=None, status_callback=None):
+
+def vergleiche_videos(video_pfade, progress_callback=None, status_callback=None):
     """
     Vergleicht die ausgewählten Videos anhand ihrer Keyframe-Histogramme.
     """
@@ -115,6 +116,7 @@ def vergleiche_videos(video_pfade, vergleichs_schwelle=0.3, progress_callback=No
 
     return vergleichs_ergebnisse
 
+
 def erzeuge_thumbnail(video_pfad, groesse=(100, 75)):
     """
     Erzeugt ein kleines Vorschaubild (Thumbnail) für das angegebene Video.
@@ -135,9 +137,10 @@ def erzeuge_thumbnail(video_pfad, groesse=(100, 75)):
         print(f"Fehler beim Erzeugen des Thumbnails für {video_pfad}: {e}")
         return None
 
+
 class VideoVergleichsApp:
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, root_):
+        self.root = root_
         self.root.title(f"Video Vergleich - v{__version__}")
         self.video_pfade = []
         self.vergleichs_ergebnisse = {}
@@ -198,9 +201,9 @@ class VideoVergleichsApp:
         fortschritt_group = LabelFrame(self.root, text="Fortschritt")
         fortschritt_group.grid(row=1, column=0, columnspan=2, padx=2, pady=2, sticky="ew")
         self.progressbar = ttk.Progressbar(fortschritt_group, orient=tk.HORIZONTAL, length=300, mode='determinate', variable=self.progress_var)
-        self.progressbar.grid(row=0, column=0, sticky="ew", padx=5, pady=5 )
+        self.progressbar.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
         self.progressbar_label = ttk.Label(fortschritt_group, text="0.00 %")
-        self.progressbar_label.grid(row=0, column=1, sticky="w", padx=5, pady=5 )
+        self.progressbar_label.grid(row=0, column=1, sticky="w", padx=5, pady=5)
         fortschritt_group.grid_columnconfigure(0, weight=1)
 
         # GroupBox für Log
@@ -216,7 +219,7 @@ class VideoVergleichsApp:
 
     def waehle_videos(self):
         dateien = filedialog.askopenfilenames(title="Videos auswählen",
-                                               filetypes=(("Video-Dateien", "*.mp4;*.avi;*.mkv"), ("Alle Dateien", "*.*")))
+                                              filetypes=(("Video-Dateien", "*.mp4;*.avi;*.mkv"), ("Alle Dateien", "*.*")))
         if dateien:
             self.video_pfade = list(dateien)
             self.update_video_liste_anzeige()
@@ -254,10 +257,8 @@ class VideoVergleichsApp:
         self.vergleichs_thread.start()
 
     def fuehre_vergleich_aus(self):
-        schwelle = self.vergleichs_schwelle.get()
         ergebnisse = vergleiche_videos(
             self.video_pfade,
-            schwelle,
             progress_callback=self.update_progressbar,
             status_callback=self.update_status
         )
@@ -277,7 +278,7 @@ class VideoVergleichsApp:
         if not self.stop_flag:
             self.status_display.config(state=tk.NORMAL)
             self.status_display.insert(tk.END, status_meldung + "\n")
-            self.status_display.see(tk.END) # Auto-Scroll
+            self.status_display.see(tk.END)  # Auto-Scroll
             self.status_display.config(state=tk.DISABLED)
             self.root.update_idletasks()
 
