@@ -24,11 +24,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Get version from version.py
+      id: get_version
+      run: |
+        VERSION=$(python -c "from version import __version__; print(__version__)")
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
     - name: Build executable with cx_Freeze
       run: python setup.py build
+
+    - name: Zip build output
+      run: Compress-Archive -Path build\* -DestinationPath build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: windows-build
-        path: build/
+        name: windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}
+        path: build/windows-build-${{ steps.get_version.outputs.VERSION }}-${{ github.sha }}.zip
